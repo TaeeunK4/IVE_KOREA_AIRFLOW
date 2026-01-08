@@ -3,5 +3,6 @@ pandas
 openpyxl
 boto3
 pyarrow
-astronomer-cosmos
-dbt-snowflake
+google
+google.genai
+astronomer-cosmos[dbt-snowflake]==1.7.1

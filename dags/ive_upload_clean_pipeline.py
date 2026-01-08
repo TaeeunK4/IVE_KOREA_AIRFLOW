@@ -36,8 +36,9 @@ with DAG(
     dag_id = "ive_upload_clean_pipeline",
     default_args = default_args,
     schedule_interval = "@daily",
-    template_searchpath = '/opt/airflow/dbt_project/models/clean'    
-    ,
+    template_searchpath = [
+        '/opt/airflow/dbt_project/snowflake_queries'
+    ],  
     tags = ["ive", "to_csv", "s3"]
 ) as dag:
     # Task 1 : Snowflake WH, DB, SCHEMA, STAGE setup
@@ -130,6 +131,24 @@ with DAG(
                     ]
             }
         )
+        upload_shape = PythonOperator(
+            task_id = "upload_s3_shape",
+            python_callable = s3_upload_csv,
+            op_kwargs = {
+                "local_base_path" : os.path.join(LOCAL_PATH, "ive_shape"),
+                "file_names" : ["ive_shape_manual.csv"],
+                "s3_folder" : "ive_shape",
+                "bucket_name" : BUCKET_NAME,
+                "aws_credentials" : {
+                    "AWS_ACCESS_KEY_ID" : "{{var.value.AWS_ACCESS_KEY_ID}}",
+                    "AWS_SECRET_ACCESS_KEY" : "{{var.value.AWS_SECRET_ACCESS_KEY}}",
+                    "AWS_ACCESS_REGION" : "{{var.value.AWS_ACCESS_REGION}}",
+                    },
+                "target_columns" : [
+                    "ads_save_way", "ads_shape"
+                    ]
+            }
+        )
     # Task 3 : ive_list, ive_sch, ive_year snowflake load
     with TaskGroup("Snowflake_load") as Snowflake_load:
         load_list = SnowflakeOperator(
@@ -191,7 +210,24 @@ with DAG(
                 """ 
             ]
         )
-    # Task 4 : ive_list, ive_sch, ive_year clean + join
+        load_shape = SnowflakeOperator(
+            task_id = "load_snowflake_shape",
+            snowflake_conn_id = SNOWFLAKE_CONN_ID,
+            sql = [
+               """
+                CREATE OR REPLACE TABLE {{ var.value.DATABASE_NAME }}.{{ var.value.SCHEMA_NAME }}.IVE_SHAPE_MANUAL (
+                    ADS_SAVE_WAY VARCHAR, ADS_SHAPE VARCHAR
+                );
+                """,
+                """
+                COPY INTO {{ var.value.DATABASE_NAME }}.{{ var.value.SCHEMA_NAME }}.IVE_SHAPE_MANUAL
+                FROM @{{ var.value.DATABASE_NAME }}.{{ var.value.SCHEMA_NAME }}.{{ var.value.STAGE_NAME }}/ive_shape/
+                FILE_FORMAT = (TYPE = 'CSV', SKIP_HEADER = 1, FIELD_OPTIONALLY_ENCLOSED_BY = '"')
+                ON_ERROR = 'CONTINUE';
+                """ 
+            ]
+        )
+    # Task 4 : ive_list, ive_sch, ive_year, ive_shape clean + join
     Dbt_Snowflake_clean_join = DbtTaskGroup(
         group_id = "Dbt_Snowflake_clean_join",
         project_config = ProjectConfig(DBT_PROJECT_PATH),
@@ -204,7 +240,7 @@ with DAG(
         snowflake_s3_upload = SnowflakeOperator(
             task_id = "Snowflake_s3_upload",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
-            sql = "s3_upload.sql"
+            sql = "IVE_ANALYTICS_DATA_S3_UPLOAD.sql"
         )
 
 [Snowflake_setup_env, S3_upload] >> Snowflake_load >> Dbt_Snowflake_clean_join >> Snowflake_s3_upload

@@ -40,7 +40,7 @@ def s3_upload_csv(
             elif ext == ".csv":
                 if target_columns:
                     # read_csv -> memory
-                    df = pd.read_csv(local_path)
+                    df = pd.read_csv(local_path, encoding='')
                 else:
                     # direct upload_csv
                     target_key = f"{s3_folder}/{file_name}"

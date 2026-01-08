@@ -1,6 +1,29 @@
+# --- Data Files (가장 중요: 대용량 파일 방지) ---
+data/*.csv
+data/*.xlsx
+data/*.json
+*.sql.gz
+
+# --- Python ---
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# --- Airflow & Docker ---
 logs/
-*.db
+/db/
+airflow.cfg
+airflow.db
+standalone_admin_password.txt
+.env
+
+# --- IDE (VS Code, IntelliJ 등) ---
+.vscode/
+.idea/
+
+# --- OS ---
 .DS_Store
+Thumbs.db

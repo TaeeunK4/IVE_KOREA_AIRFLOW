@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: s3_raw_data
+    database: IVE_DATA
+    schema: RAW_DATA
+    description: "s3 -> snowflake load data"
+    
+    tables:
+      - name: IVE_LIST_RAW
+        description: "s3-> snowflake ive_list_all.csv"
+
+      - name: IVE_SCH_RAW
+        description: "s3-> snowflake ive_sch_all.csv"
+
+      - name: IVE_YEAR_RAW
+        description: "s3-> snowflake ive_year_all.csv"
+
+      - name: IVE_SHAPE_MANUAL
+        description: "s3-> snowflake ive_shape_manual.csv"
+        
+  - name: s3_mapping_data
+    database: IVE_DATA
+    schema: MAPPING_DATA
+    tables:
+      - name: IVE_INDUSTRY_MAPPING
+        description: "s3-> snowflake ive_industry_mapping.csv"
