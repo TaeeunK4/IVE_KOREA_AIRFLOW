@@ -9,6 +9,7 @@ from cosmos.profiles import SnowflakeUserPasswordProfileMapping
 from airflow.utils.dates import days_ago
 from scripts.classify_industry_gemini_3_left_final import s3_temp_delete, extract_null, split_prior_classify, classify_industry_3_left_final, merge_after_classify
 from scripts.classify_finalize import finalize_classified_data
+from scripts.mapping_parquet import MAPPING_S3_PARQUET
 
 BUCKET_NAME = "ivekorea-airflow-practice-taeeunk"
 TEMP_INPUT_DIR = "ive_temp_batch/left/final/input/"
@@ -142,5 +143,14 @@ with DAG(
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
             sql = "IVE_ANALYTICS_FINAL_S3_UPLOAD.sql"
         )
-        finalize_task >> load_mapping_data >> Dbt_Snowflake_clean_join >> snowflake_s3_upload_final
+        mapping_final_data = PythonOperator(
+            task_id = "mapping_parquet_data",
+            python_callable = MAPPING_S3_PARQUET,
+            op_kwargs = {
+                "BUCKET_NAME" : BUCKET_NAME,
+                "S3_KEY" : "ive_analytic/IVE_ANALYTICS_FINAL.parquet",
+                "LOCAL_PATH" : "/opt/airflow/data/IVE_ANALYTICS_FINAL.parquet"
+            }
+        )
+        finalize_task >> load_mapping_data >> Dbt_Snowflake_clean_join >> snowflake_s3_upload_final >> mapping_final_data
 [temp_clear_task >> extract_null_task >> split_task >> classify_task >> merge_task] >> ive_industry_finalize_merge

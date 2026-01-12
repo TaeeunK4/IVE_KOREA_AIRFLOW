@@ -6,3 +6,5 @@ pyarrow
 google
 google.genai
 astronomer-cosmos[dbt-snowflake]==1.7.1
+pingouin
+mlflow
