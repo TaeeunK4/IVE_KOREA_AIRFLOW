@@ -2,6 +2,7 @@
 data/*.csv
 data/*.xlsx
 data/*.json
+data/*.parquet
 *.sql.gz
 
 # --- Python ---
