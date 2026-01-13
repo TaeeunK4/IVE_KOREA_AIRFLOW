@@ -3,7 +3,7 @@ import io
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 # classified_keys -> one file -> mapping -> merge with origin_data -> s3 upload
-def finalize_classified_data(BUCKET_NAME, CLASSIFIED_KEYS, FINAL_OUTPUT_KEY):
+def FINALIZE_CLASSIFIED_DATA(BUCKET_NAME, CLASSIFIED_KEYS, FINAL_OUTPUT_KEY):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
     all_dfs = []

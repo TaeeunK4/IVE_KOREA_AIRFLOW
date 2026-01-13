@@ -34,6 +34,7 @@ PROMPT_TEMPLATE = '''
 - 출력은 오직 'ADS_IDX' | 'NAME' | 'INDUSTRY' 형식만 허용합니다.
 - 전달받은 'ADS_IDX'를 절대 수정하거나 생략하지 마십시오. 반드시 'NAME'과 짝을 맞춰 그대로 출력하십시오.
 - 서론, 결론, 설명은 절대 금지하며 데이터 행만 출력하십시오.
+- 답변 앞에 아무 말도 하지마십시오. 답변만 출력하십시오.
 
 ['INDUSTRY' 분류 및 출력 예시]
 1 | [정답입력]첨단 파스타 맛집(3) | F&B/식품
@@ -49,7 +50,7 @@ PROMPT_TEMPLATE = '''
 {names_list}
 '''
 # s3 temp file|folder delete
-def s3_temp_delete(BUCKET_NAME: str, TEMPS: list):
+def S3_TEMP_DELETE(BUCKET_NAME: str, TEMPS: list):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
     # delte TEMPS file|folder
@@ -61,8 +62,23 @@ def s3_temp_delete(BUCKET_NAME: str, TEMPS: list):
         else:
             print(f"No objects found to delete in s3://{BUCKET_NAME}/{temp}")
 
+# Null extract
+def EXTRACT_NULL(BUCKET_NAME, S3_KEY, RETRY_KEY):
+    s3_hook = S3Hook(aws_conn_id='AWS_CON')
+    df = pd.read_csv(io.StringIO(s3_hook.read_key(S3_KEY, BUCKET_NAME)))
+    
+    # Only INDUSTRY Null -> drop_duplicate
+    df_null = df[df['INDUSTRY'].isna()].copy()
+    retry_list = df_null[['NAME']].drop_duplicates()
+    
+    csv_buffer = io.StringIO()
+    retry_list.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+    s3_hook.load_string(csv_buffer.getvalue(),
+                        RETRY_KEY, BUCKET_NAME,
+                        replace=True)
+
 # s3 -> split by batch_size -> file + params s3 upload
-def split_prior_classify(BUCKET_NAME: str, S3_KEY: str, BATCH_SIZE: int,
+def SPLIT_PRIOR_CLASSIFY(BUCKET_NAME: str, S3_KEY: str, BATCH_SIZE: int,
                             TEMP_INPUT_DIR: str, TEMP_OUTPUT_DIR: str, UNIQUE_MASTER_KEY: str):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
@@ -104,7 +120,7 @@ def split_prior_classify(BUCKET_NAME: str, S3_KEY: str, BATCH_SIZE: int,
     return CLASSIFY_REF_PARAMS
 
 # s3 splited_data -> classify -> s3 upload
-def classify_industry_3(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
+def CLASSIFY_INDUSTRY_V3_3(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
     # airflow variables -> get api key
     GEMINI_API_KEY = Variable.get("GOOGLE_AI_API_KEY")
     # s3 connect
@@ -134,15 +150,16 @@ def classify_industry_3(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
         )
     )
     
-    # result_text parsing
+    # result_text flexible parsing
     result_text = response.text.strip()
     result_data = []
     for line in result_text.split('\n'):
-        # delete '|' and '---', unnecessary 'ADS_IDX'
-        if '|' in line and '---' not in line and 'ADS_IDX' not in line:
+        # unnecessary blank or message but, ADS_IDX int -> append
+        if line.count('|') >= 2:
             parts = [p.strip() for p in line.split('|')]
-            if len(parts) == 3:
-                result_data.append(parts)
+            if parts[0].isdigit():
+                result_data.append(parts[:3])
+
     result_df = pd.DataFrame(result_data, columns=['ADS_IDX', 'NAME', 'INDUSTRY'])
 
     # result_df -> s3 upload
@@ -157,7 +174,7 @@ def classify_industry_3(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
     print(f"Successfully saved classification results to s3://{BUCKET_NAME}/{OUTPUT_S3_KEY}")
 
 # s3 classified data -> merge with master_key -> name/industry : for merge with list data
-def merge_after_classify(BUCKET_NAME: str, TEMP_OUTPUT_DIR: str,
+def MERGE_AFTER_CLASSIFY(BUCKET_NAME: str, TEMP_OUTPUT_DIR: str,
                   CLASSIFIED_OUTPUT_KEY: str, UNIQUE_MASTER_KEY: str):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')

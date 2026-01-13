@@ -3,11 +3,12 @@ from pathlib import Path
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.utils.dates import days_ago
 from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig
 from cosmos.profiles import SnowflakeUserPasswordProfileMapping
-from scripts.s3_upload_csv import s3_upload_csv
+from scripts.IVE_S3_UPLOAD_CSV_XLSX import S3_UPLOAD_CSV_XLSX
 
 BUCKET_NAME = "ivekorea-airflow-practice-taeeunk"
 LOCAL_PATH = "/opt/airflow/data"
@@ -33,7 +34,7 @@ profile_config = ProfileConfig(
 )
 
 with DAG(
-    dag_id = "ive_upload_clean_pipeline",
+    dag_id = "IVE_S3_SNOWFLAKE_UPLOAD_CLEAN_PIPELINE",
     default_args = default_args,
     schedule_interval = "@daily",
     template_searchpath = [
@@ -42,7 +43,7 @@ with DAG(
     tags = ["ive", "to_csv", "s3"]
 ) as dag:
     # Task 1 : Snowflake WH, DB, SCHEMA, STAGE setup
-    with TaskGroup("Snowflake_setup_env") as Snowflake_setup_env:
+    with TaskGroup("SNOWFLAKE_SETUP_ENV_GROUP") as SNOWFLAKE_SETUP_ENV_GROUP:
         setup_env = SnowflakeOperator(
             task_id = "Snowflake_setup_env",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
@@ -61,10 +62,10 @@ with DAG(
     ]
         )
     # Task 2 : ive_list, ive_sch, ive_year s3 upload
-    with TaskGroup("S3_upload") as S3_upload:
+    with TaskGroup("S3_UPLOAD_GROUP") as S3_UPLOAD_GROUP:
         upload_list = PythonOperator(
-            task_id = "upload_s3_list",
-            python_callable = s3_upload_csv,
+            task_id = "S3_upload_list",
+            python_callable = S3_UPLOAD_CSV_XLSX,
             op_kwargs = {
                 "local_base_path" : os.path.join(LOCAL_PATH, "ive_list"),
                 "file_names" : ["ive_list_all.xlsx"],
@@ -84,8 +85,8 @@ with DAG(
             }
         )
         upload_sch = PythonOperator(
-            task_id = "upload_s3_sch",
-            python_callable = s3_upload_csv,
+            task_id = "S3_upload_sch",
+            python_callable = S3_UPLOAD_CSV_XLSX,
             op_kwargs = {
                 "local_base_path" : os.path.join(LOCAL_PATH, "ive_sch"),
                 "file_names" : ["ive_sch_all.xlsx"],
@@ -112,8 +113,8 @@ with DAG(
             year_files = []   
 
         upload_year = PythonOperator(
-            task_id = "upload_s3_year",
-            python_callable = s3_upload_csv,
+            task_id = "S3_upload_year",
+            python_callable = S3_UPLOAD_CSV_XLSX,
             op_kwargs = {
                 "local_base_path" : YEAR_PATH,
                 "file_names" : year_files,
@@ -132,8 +133,8 @@ with DAG(
             }
         )
         upload_shape = PythonOperator(
-            task_id = "upload_s3_shape",
-            python_callable = s3_upload_csv,
+            task_id = "S3_upload_shape",
+            python_callable = S3_UPLOAD_CSV_XLSX,
             op_kwargs = {
                 "local_base_path" : os.path.join(LOCAL_PATH, "ive_shape"),
                 "file_names" : ["ive_shape_manual.csv"],
@@ -150,9 +151,9 @@ with DAG(
             }
         )
     # Task 3 : ive_list, ive_sch, ive_year snowflake load
-    with TaskGroup("Snowflake_load") as Snowflake_load:
+    with TaskGroup("SNOWFLAKE_LOAD_DATA_GROUP") as SNOWFLAKE_LOAD_DATA_GROUP:
         load_list = SnowflakeOperator(
-            task_id = "load_snowflake_list",
+            task_id = "Snowflake_load_list",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
             sql = [
                """
@@ -174,7 +175,7 @@ with DAG(
             ]
         )
         load_sch = SnowflakeOperator(
-            task_id = "load_snowflake_sch",
+            task_id = "Snowflake_load_sch",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
             sql = [
                """
@@ -192,7 +193,7 @@ with DAG(
             ]
         )
         load_year = SnowflakeOperator(
-            task_id = "load_snowflake_year",
+            task_id = "Snowflake_load_year",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
             sql = [
                """
@@ -211,7 +212,7 @@ with DAG(
             ]
         )
         load_shape = SnowflakeOperator(
-            task_id = "load_snowflake_shape",
+            task_id = "Snowflake_load_shape",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
             sql = [
                """
@@ -228,19 +229,28 @@ with DAG(
             ]
         )
     # Task 4 : ive_list, ive_sch, ive_year, ive_shape clean + join
-    Dbt_Snowflake_clean_join = DbtTaskGroup(
-        group_id = "Dbt_Snowflake_clean_join",
+    DBT_SNOWFLAKE_CLEAN_JOIN_GROUP = DbtTaskGroup(
+        group_id = "DBT_SNOWFLAKE_CLEAN_JOIN_GROUP",
         project_config = ProjectConfig(DBT_PROJECT_PATH),
         profile_config = profile_config,
         execution_config = ExecutionConfig(dbt_executable_path = "/usr/local/bin/dbt"),
         operator_args= {"install_deps": True},
     )
     # Task 5 : clean + left_join data -> s3 upload
-    with TaskGroup("Snowflake_s3_upload") as Snowflake_s3_upload:
+    with TaskGroup("SNOWFLAKE_S3_UPLOAD_GROUP") as SNOWFLAKE_S3_UPLOAD_GROUP:
         snowflake_s3_upload = SnowflakeOperator(
             task_id = "Snowflake_s3_upload",
             snowflake_conn_id = SNOWFLAKE_CONN_ID,
             sql = "IVE_ANALYTICS_DATA_S3_UPLOAD.sql"
         )
+    with TaskGroup("TRIGGER_TO_LLM_CLASSIFIER_GROUP") as TRIGGER_TO_LLM_CLASSIFIER_GROUP:
+        trigger_classifier = TriggerDagRunOperator(
+        task_id="Trigger_to_llm_1",
+        trigger_dag_id="IVE_GEMINI_LLM_CLASSIFIER_1_PIPELINE",
+        wait_for_completion=False,
+        poke_interval=60,
+        reset_dag_run=True,
+        dag=dag,
+    )
 
-[Snowflake_setup_env, S3_upload] >> Snowflake_load >> Dbt_Snowflake_clean_join >> Snowflake_s3_upload
+[SNOWFLAKE_SETUP_ENV_GROUP, S3_UPLOAD_GROUP] >> SNOWFLAKE_LOAD_DATA_GROUP >> DBT_SNOWFLAKE_CLEAN_JOIN_GROUP >> SNOWFLAKE_S3_UPLOAD_GROUP >> TRIGGER_TO_LLM_CLASSIFIER_GROUP

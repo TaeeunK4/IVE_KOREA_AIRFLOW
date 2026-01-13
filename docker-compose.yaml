@@ -73,6 +73,8 @@ x-airflow-common:
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW__WEBSERVER__SECRET_KEY: 'any_random_string_here'
+    AWS_PROFILE: sso-profile
+    AWS_DEFAULT_REGION: ap-northeast-2
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
@@ -81,6 +83,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/include:/opt/airflow/include
     - ${AIRFLOW_PROJ_DIR:-.}/dbt_project:/opt/airflow/dbt_project
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+    - C:/Users/kti04/.aws:/home/airflow/.aws
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -163,11 +166,20 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     environment:
       <<: *airflow-common-env
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -314,7 +326,7 @@ services:
       --host 0.0.0.0
       --port 5000
       --backend-store-uri postgresql://mlflow_user:mlflow_password@postgres-mlflow/mlflow_db
-      --default-artifact-root ./artifacts
+      --default-artifact-root s3://ivekorea-airflow-practice-taeeunk/mlflow-artifacts/
     depends_on:
       - postgres-mlflow
 volumes:

@@ -49,7 +49,7 @@ PROMPT_TEMPLATE = '''
 {names_list}
 '''
 # s3 temp file|folder delete
-def s3_temp_delete(BUCKET_NAME: str, TEMPS: list):
+def S3_TEMP_DELETE(BUCKET_NAME: str, TEMPS: list):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
     # delte TEMPS file|folder
@@ -61,23 +61,8 @@ def s3_temp_delete(BUCKET_NAME: str, TEMPS: list):
         else:
             print(f"No objects found to delete in s3://{BUCKET_NAME}/{temp}")
 
-# Null extract
-def extract_null(BUCKET_NAME, S3_KEY, RETRY_KEY):
-    s3_hook = S3Hook(aws_conn_id='AWS_CON')
-    df = pd.read_csv(io.StringIO(s3_hook.read_key(S3_KEY, BUCKET_NAME)))
-    
-    # Only INDUSTRY Null -> drop_duplicate
-    df_null = df[df['INDUSTRY'].isna()].copy()
-    retry_list = df_null[['NAME']].drop_duplicates()
-    
-    csv_buffer = io.StringIO()
-    retry_list.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
-    s3_hook.load_string(csv_buffer.getvalue(),
-                        RETRY_KEY, BUCKET_NAME,
-                        replace=True)
-
 # s3 -> split by batch_size -> file + params s3 upload
-def split_prior_classify(BUCKET_NAME: str, S3_KEY: str, BATCH_SIZE: int,
+def SPLIT_PRIOR_CLASSIFY(BUCKET_NAME: str, S3_KEY: str, BATCH_SIZE: int,
                             TEMP_INPUT_DIR: str, TEMP_OUTPUT_DIR: str, UNIQUE_MASTER_KEY: str):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
@@ -119,7 +104,7 @@ def split_prior_classify(BUCKET_NAME: str, S3_KEY: str, BATCH_SIZE: int,
     return CLASSIFY_REF_PARAMS
 
 # s3 splited_data -> classify -> s3 upload
-def classify_industry_3_left(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
+def CLASSIFY_INDUSTRY_V3(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
     # airflow variables -> get api key
     GEMINI_API_KEY = Variable.get("GOOGLE_AI_API_KEY")
     # s3 connect
@@ -149,16 +134,15 @@ def classify_industry_3_left(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
         )
     )
     
-    # result_text flexible parsing
+    # result_text parsing
     result_text = response.text.strip()
     result_data = []
     for line in result_text.split('\n'):
-        # unnecessary blank or message but, ADS_IDX int -> append
-        if line.count('|') >= 2:
+        # delete '|' and '---', unnecessary 'ADS_IDX'
+        if '|' in line and '---' not in line and 'ADS_IDX' not in line:
             parts = [p.strip() for p in line.split('|')]
-            if parts[0].isdigit():
-                result_data.append(parts[:3])
-
+            if len(parts) == 3:
+                result_data.append(parts)
     result_df = pd.DataFrame(result_data, columns=['ADS_IDX', 'NAME', 'INDUSTRY'])
 
     # result_df -> s3 upload
@@ -173,7 +157,7 @@ def classify_industry_3_left(BUCKET_NAME: str, S3_KEY: str, OUTPUT_S3_KEY: str):
     print(f"Successfully saved classification results to s3://{BUCKET_NAME}/{OUTPUT_S3_KEY}")
 
 # s3 classified data -> merge with master_key -> name/industry : for merge with list data
-def merge_after_classify(BUCKET_NAME: str, TEMP_OUTPUT_DIR: str,
+def MERGE_AFTER_CLASSIFY(BUCKET_NAME: str, TEMP_OUTPUT_DIR: str,
                   CLASSIFIED_OUTPUT_KEY: str, UNIQUE_MASTER_KEY: str):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')

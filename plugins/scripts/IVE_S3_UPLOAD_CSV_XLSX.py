@@ -3,7 +3,7 @@ import boto3
 import pandas as pd
 from io import StringIO
 
-def s3_upload_csv(
+def S3_UPLOAD_CSV_XLSX(
         local_base_path: str, file_names: list,  
         s3_folder: str, bucket_name: str,
         aws_credentials: dict = None, target_columns: list = None):
