@@ -4,7 +4,7 @@ from airflow.utils.task_group import TaskGroup
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.dates import days_ago
-from scripts.IVE_GEMENI_LLM_CLASSIFIER_V3_2.py import S3_TEMP_DELETE, EXTRACT_NULL, SPLIT_PRIOR_CLASSIFY, CLASSIFY_INDUSTRY_V3_2, MERGE_AFTER_CLASSIFY
+from scripts.IVE_GEMENI_LLM_CLASSIFIER_V3_2 import S3_TEMP_DELETE, EXTRACT_NULL, SPLIT_PRIOR_CLASSIFY, CLASSIFY_INDUSTRY_V3_2, MERGE_AFTER_CLASSIFY
 
 # 설정값
 BUCKET_NAME = "ivekorea-airflow-practice-taeeunk"

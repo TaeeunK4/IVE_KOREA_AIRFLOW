@@ -9,8 +9,8 @@ from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig
 from cosmos.profiles import SnowflakeUserPasswordProfileMapping
 from airflow.utils.dates import days_ago
 from scripts.IVE_GEMENI_LLM_CLASSIFIER_V3_3 import S3_TEMP_DELETE, EXTRACT_NULL, SPLIT_PRIOR_CLASSIFY, CLASSIFY_INDUSTRY_V3_3, MERGE_AFTER_CLASSIFY
-from scripts.IVE_GEMINI_LLM_CLASSIFIER_FINALIZE.py import FINALIZE_CLASSIFIED_DATA
-from scripts.IVE_GEMENI_LLM_CLASSIFIER_MAPPING_PARQUET.py import MAPPING_S3_PARQUET
+from scripts.IVE_GEMINI_LLM_CLASSIFIER_FINALIZE import FINALIZE_CLASSIFIED_DATA
+from scripts.IVE_GEMENI_LLM_CLASSIFIER_MAPPING_PARQUET import MAPPING_S3_PARQUET
 
 BUCKET_NAME = "ivekorea-airflow-practice-taeeunk"
 TEMP_INPUT_DIR = "ive_temp_batch/left/final/input/"

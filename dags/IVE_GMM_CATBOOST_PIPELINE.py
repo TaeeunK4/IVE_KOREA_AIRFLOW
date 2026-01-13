@@ -79,7 +79,7 @@ with DAG(
     with TaskGroup("TRIGGER_TO_SPLIT_CLUSTER_GROUP") as TRIGGER_TO_SPLIT_CLUSTER_GROUP:
         trigger_classifier = TriggerDagRunOperator(
         task_id="Trigger_to_split_cluster",
-        trigger_dag_id="IVE_SPLIT_CLUSTER",
+        trigger_dag_id="IVE_SPLIT_CLUSTER_PIPELINE",
         wait_for_completion=False,
         poke_interval=60,
         reset_dag_run=True,

@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.python import PythonOperator
-from scripts.IVE_CATBOOST_PRED_TOP10.py import PREDICT_TOP10_HIGHCVR, PREDICT_TOP10_HIGHEFF, PREDICT_TOP10_HIGHABS, CONCAT_TOP10, CONCAT_MASTER_TABLEAU_FILE
+from scripts.IVE_CATBOOST_PRED_TOP10 import PREDICT_TOP10_HIGHCVR, PREDICT_TOP10_HIGHEFF, PREDICT_TOP10_HIGHABS, CONCAT_TOP10, CONCAT_MASTER_TABLEAU_FILE
 
 
 BUCKET_NAME = "ivekorea-airflow-practice-taeeunk"
