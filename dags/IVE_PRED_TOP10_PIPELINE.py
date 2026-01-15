@@ -28,7 +28,7 @@ with DAG(
                 "BUCKET_NAME" : BUCKET_NAME
             }
         ).expand(
-            op_args=[[i] for i in range(7)]
+            op_args=[[i] for i in range(8)]
         )
         process_higheff_task = PythonOperator.partial(
             task_id = "Predict_top_10_higheff",
@@ -37,7 +37,7 @@ with DAG(
                 "BUCKET_NAME" : BUCKET_NAME
             }
         ).expand(
-            op_args=[[i] for i in range(7)]
+            op_args=[[i] for i in range(8)]
         )
         process_highats_task = PythonOperator.partial(
             task_id = "Predict_top_10_highats",
@@ -46,7 +46,7 @@ with DAG(
                 "BUCKET_NAME" : BUCKET_NAME
             }
         ).expand(
-            op_args=[[i] for i in range(7)]
+            op_args=[[i] for i in range(8)]
         )
         process_highcvr_task >> process_higheff_task >> process_highats_task
 
