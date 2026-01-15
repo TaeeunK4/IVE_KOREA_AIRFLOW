@@ -2,12 +2,17 @@ import io
 import pandas as pd
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
+# gmm clustering -> edit data with split cluster -> can analyze cluster data
 def SPLIT_CLUSTER(BUCKET_NAME, S3_KEY, LOCAL_PATH, **kwargs):
+    # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
     file_obj = s3_hook.get_key(S3_KEY, BUCKET_NAME)
     file_obj.download_file(LOCAL_PATH)
     
+    # data load
     df = pd.read_parquet(LOCAL_PATH)
+
+    # cluster split & s3 upload
     unique_clusters = sorted(df['GMM_CLUSTER'].unique())
     for i in unique_clusters:
         df_1 = df[df['GMM_CLUSTER'] == i]

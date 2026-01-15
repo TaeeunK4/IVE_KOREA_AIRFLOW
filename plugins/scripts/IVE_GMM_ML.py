@@ -20,12 +20,12 @@ def GMM_LOAD_DATA(BUCKET_NAME, S3_KEY, LOCAL_PATH):
 def GMM_SEARCH_N(LOCAL_PATH: str,
                  SCALER_TYPE: Type, EXPERIMENT_NAME: str, **context):
     df = pd.read_parquet(LOCAL_PATH)
-    # groupby master_label -> x features : cvr, abs, 1000_w_efficiency
-    df_label = df.groupby('MASTER_LABEL')[['CVR', 'ABS', '1000_W_EFFICIENCY']].mean().reset_index()
+    # groupby master_label -> x features : cvr, ats, 1000_w_efficiency
+    df_label = df.groupby('MASTER_LABEL')[['CVR', 'ATS', '1000_W_EFFICIENCY']].mean().reset_index()
     df_label.columns = [
-        'MASTER_LABEL', 'avg_CVR', 'avg_ABS', 'avg_1000_W_EFFICIENCY']
+        'MASTER_LABEL', 'avg_CVR', 'avg_ATS', 'avg_1000_W_EFFICIENCY']
 
-    X = df_label[['avg_CVR', 'avg_ABS', 'avg_1000_W_EFFICIENCY']]
+    X = df_label[['avg_CVR', 'avg_ATS', 'avg_1000_W_EFFICIENCY']]
     # all num -> scaling
     scaler = SCALER_TYPE()
     X_scaled = scaler.fit_transform(X)
@@ -56,11 +56,11 @@ def GMM_CLUSTERING(BUCKET_NAME: str, LOCAL_PATH: str,
     OP_N = int(OP_N)
     df = pd.read_parquet(LOCAL_PATH)
 
-    df_label = df.groupby('MASTER_LABEL')[['CVR', 'ABS', '1000_W_EFFICIENCY']].mean().reset_index()
+    df_label = df.groupby('MASTER_LABEL')[['CVR', 'ATS', '1000_W_EFFICIENCY']].mean().reset_index()
     df_label.columns = [
-        'MASTER_LABEL', 'avg_CVR', 'avg_ABS', 'avg_1000_W_EFFICIENCY']
+        'MASTER_LABEL', 'avg_CVR', 'avg_ATS', 'avg_1000_W_EFFICIENCY']
 
-    X = df_label[['avg_CVR', 'avg_ABS', 'avg_1000_W_EFFICIENCY']]
+    X = df_label[['avg_CVR', 'avg_ATS', 'avg_1000_W_EFFICIENCY']]
     scaler = SCALER_TYPE()
     X_scaled = scaler.fit_transform(X)
 

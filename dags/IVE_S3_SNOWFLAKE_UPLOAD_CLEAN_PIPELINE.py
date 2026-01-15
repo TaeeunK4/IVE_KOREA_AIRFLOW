@@ -40,7 +40,7 @@ with DAG(
     template_searchpath = [
         '/opt/airflow/dbt_project/snowflake_queries'
     ],  
-    tags = ["ive", "to_csv", "s3"]
+    tags = ["S3", "SNOWFLAKE", "UPLOAD", "CLEAN"]
 ) as dag:
     # Task 1 : Snowflake WH, DB, SCHEMA, STAGE setup
     with TaskGroup("SNOWFLAKE_SETUP_ENV_GROUP") as SNOWFLAKE_SETUP_ENV_GROUP:
@@ -246,7 +246,7 @@ with DAG(
     with TaskGroup("TRIGGER_TO_LLM_CLASSIFIER_GROUP") as TRIGGER_TO_LLM_CLASSIFIER_GROUP:
         trigger_classifier = TriggerDagRunOperator(
         task_id="Trigger_to_llm_1",
-        trigger_dag_id="IVE_GEMINI_LLM_CLASSIFIER_1_PIPELINE",
+        trigger_dag_id="IVE_LLM_GEMINI_CLASSIFIER_1_PIPELINE",
         wait_for_completion=False,
         poke_interval=60,
         reset_dag_run=True,

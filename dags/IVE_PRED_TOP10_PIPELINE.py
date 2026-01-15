@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.python import PythonOperator
-from scripts.IVE_CATBOOST_PRED_TOP10 import PREDICT_TOP10_HIGHCVR, PREDICT_TOP10_HIGHEFF, PREDICT_TOP10_HIGHABS, CONCAT_TOP10, CONCAT_MASTER_TABLEAU_FILE
+from scripts.IVE_CATBOOST_PRED_TOP10 import PREDICT_TOP10_HIGHCVR, PREDICT_TOP10_HIGHEFF, PREDICT_TOP10_HIGHATS, CONCAT_TOP10, CONCAT_MASTER_TABLEAU_FILE
 
 
 BUCKET_NAME = "ivekorea-airflow-practice-taeeunk"
@@ -17,7 +17,8 @@ with DAG(
     dag_id='IVE_PRED_TOP10_PIPELINE',
     default_args=default_args,
     schedule_interval=None,
-    catchup=False
+    catchup=False,  
+    tags = ["S3", "SPLIT", "CLUSTER", "UPLOAD"]
 ) as dag:
     with TaskGroup("PREDICT_TOP_10_BY_CATBOOST_GROUP") as PREDICT_TOP_10_BY_CATBOOST_GROUP:
         process_highcvr_task = PythonOperator.partial(
@@ -38,19 +39,19 @@ with DAG(
         ).expand(
             op_args=[[i] for i in range(7)]
         )
-        process_highabs_task = PythonOperator.partial(
-            task_id = "Predict_top_10_highabs",
-            python_callable = PREDICT_TOP10_HIGHABS,
+        process_highats_task = PythonOperator.partial(
+            task_id = "Predict_top_10_highats",
+            python_callable = PREDICT_TOP10_HIGHATS,
             op_kwargs = {
                 "BUCKET_NAME" : BUCKET_NAME
             }
         ).expand(
             op_args=[[i] for i in range(7)]
         )
-        process_highcvr_task >> process_higheff_task >> process_highabs_task
+        process_highcvr_task >> process_higheff_task >> process_highats_task
 
     with TaskGroup("CONCAT_TOP10_RESULTS_WITH_METRICS_GROUP") as CONCAT_TOP10_RESULTS_WITH_METRICS_GROUP:
-        metrics = ['highcvr', 'higheff', 'highabs']
+        metrics = ['highcvr', 'higheff', 'highats']
         for metric in metrics:
             concat_top_10 = PythonOperator(
                 task_id = f"Concat_{metric}",

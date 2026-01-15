@@ -19,7 +19,7 @@ def PREDICT_TOP10_HIGHCVR(CLUSTER_ID: int, BUCKET_NAME: str):
     model_content = model_obj.get()['Body'].read()
     _model = pickle.loads(model_content)
     
-    # x : shape, mda, start_time -> cvr, eff, abs predict
+    # x : shape, mda, start_time -> cvr, eff, ats predict
     unique_conditions = df[['SHAPE', 'MDA', 'START_TIME']].drop_duplicates()
     result_df = unique_conditions.copy()
     result_df['MDA'] = result_df['MDA'].astype(str)
@@ -27,7 +27,7 @@ def PREDICT_TOP10_HIGHCVR(CLUSTER_ID: int, BUCKET_NAME: str):
     targets = {
             'CVR': 'Pred_CVR',
             '1000_W_EFFICIENCY': 'Pred_EFF',
-            'ABS': 'Pred_ABS'
+            'ATS': 'Pred_ATS'
         }
 
     for model_key_name, col_name in targets.items():
@@ -43,11 +43,11 @@ def PREDICT_TOP10_HIGHCVR(CLUSTER_ID: int, BUCKET_NAME: str):
     # scaling range 0 ~ 100, cvr weight -> score
     if not result_df.empty:
         scaler = MinMaxScaler(feature_range=(0, 100))
-        scaled_vals = scaler.fit_transform(result_df[['Pred_CVR', 'Pred_EFF', 'Pred_ABS']])
+        scaled_vals = scaler.fit_transform(result_df[['Pred_CVR', 'Pred_EFF', 'Pred_ATS']])
         result_df['CVR_scaled'] = scaled_vals[:, 0]
         result_df['EFF_scaled'] = scaled_vals[:, 1]
-        result_df['ABS_scaled'] = scaled_vals[:, 2]
-        result_df['score'] = result_df['CVR_scaled']*0.5 + result_df['EFF_scaled']*0.25 + result_df['ABS_scaled']*0.25
+        result_df['ATS_scaled'] = scaled_vals[:, 2]
+        result_df['score'] = result_df['CVR_scaled']*0.5 + result_df['EFF_scaled']*0.25 + result_df['ATS_scaled']*0.25
         # sort by score -> rank, cluster record
         top_10 = result_df.sort_values('score', ascending=False).head(10).copy()
         top_10['Rank'] = range(1, len(top_10) + 1)
@@ -80,7 +80,7 @@ def PREDICT_TOP10_HIGHEFF(CLUSTER_ID: int, BUCKET_NAME: str):
     model_content = model_obj.get()['Body'].read()
     _model = pickle.loads(model_content)
     
-    # x : shape, mda, start_time -> cvr, eff, abs predict
+    # x : shape, mda, start_time -> cvr, eff, ats predict
     unique_conditions = df[['SHAPE', 'MDA', 'START_TIME']].drop_duplicates()
     result_df = unique_conditions.copy()
     result_df['MDA'] = result_df['MDA'].astype(str)
@@ -88,7 +88,7 @@ def PREDICT_TOP10_HIGHEFF(CLUSTER_ID: int, BUCKET_NAME: str):
     targets = {
             'CVR': 'Pred_CVR',
             '1000_W_EFFICIENCY': 'Pred_EFF',
-            'ABS': 'Pred_ABS'
+            'ATS': 'Pred_ATS'
         }
 
     for model_key_name, col_name in targets.items():
@@ -104,11 +104,11 @@ def PREDICT_TOP10_HIGHEFF(CLUSTER_ID: int, BUCKET_NAME: str):
     # scaling range 0 ~ 100, cvr weight -> score    
     if not result_df.empty:
         scaler = MinMaxScaler(feature_range=(0, 100))
-        scaled_vals = scaler.fit_transform(result_df[['Pred_CVR', 'Pred_EFF', 'Pred_ABS']])
+        scaled_vals = scaler.fit_transform(result_df[['Pred_CVR', 'Pred_EFF', 'Pred_ATS']])
         result_df['CVR_scaled'] = scaled_vals[:, 0]
         result_df['EFF_scaled'] = scaled_vals[:, 1]
-        result_df['ABS_scaled'] = scaled_vals[:, 2]
-        result_df['score'] = result_df['CVR_scaled']*0.25 + result_df['EFF_scaled']*0.5 + result_df['ABS_scaled']*0.25
+        result_df['ATS_scaled'] = scaled_vals[:, 2]
+        result_df['score'] = result_df['CVR_scaled']*0.25 + result_df['EFF_scaled']*0.5 + result_df['ATS_scaled']*0.25
         # sort by score -> rank, cluster record        
         top_10 = result_df.sort_values('score', ascending=False).head(10).copy()
         top_10['Rank'] = range(1, len(top_10) + 1)
@@ -126,8 +126,8 @@ def PREDICT_TOP10_HIGHEFF(CLUSTER_ID: int, BUCKET_NAME: str):
     else:
         print(f"Cluster {CLUSTER_ID} has no valid data after filtering.")
 
-# abs weight top 10
-def PREDICT_TOP10_HIGHABS(CLUSTER_ID: int, BUCKET_NAME: str):
+# ats weight top 10
+def PREDICT_TOP10_HIGHATS(CLUSTER_ID: int, BUCKET_NAME: str):
     # s3 connect    
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
     # data load
@@ -141,7 +141,7 @@ def PREDICT_TOP10_HIGHABS(CLUSTER_ID: int, BUCKET_NAME: str):
     model_content = model_obj.get()['Body'].read()
     _model = pickle.loads(model_content)
     
-    # x : shape, mda, start_time -> cvr, eff, abs predict
+    # x : shape, mda, start_time -> cvr, eff, ats predict
     unique_conditions = df[['SHAPE', 'MDA', 'START_TIME']].drop_duplicates()
     result_df = unique_conditions.copy()
     result_df['MDA'] = result_df['MDA'].astype(str)
@@ -149,7 +149,7 @@ def PREDICT_TOP10_HIGHABS(CLUSTER_ID: int, BUCKET_NAME: str):
     targets = {
             'CVR': 'Pred_CVR',
             '1000_W_EFFICIENCY': 'Pred_EFF',
-            'ABS': 'Pred_ABS'
+            'ATS': 'Pred_ATS'
         }
 
     for model_key_name, col_name in targets.items():
@@ -165,18 +165,18 @@ def PREDICT_TOP10_HIGHABS(CLUSTER_ID: int, BUCKET_NAME: str):
     # scaling range 0 ~ 100, cvr weight -> score      
     if not result_df.empty:
         scaler = MinMaxScaler(feature_range=(0, 100))
-        scaled_vals = scaler.fit_transform(result_df[['Pred_CVR', 'Pred_EFF', 'Pred_ABS']])
+        scaled_vals = scaler.fit_transform(result_df[['Pred_CVR', 'Pred_EFF', 'Pred_ATS']])
         result_df['CVR_scaled'] = scaled_vals[:, 0]
         result_df['EFF_scaled'] = scaled_vals[:, 1]
-        result_df['ABS_scaled'] = scaled_vals[:, 2]
-        result_df['score'] = result_df['CVR_scaled']*0.25 + result_df['EFF_scaled']*0.25 + result_df['ABS_scaled']*0.5
+        result_df['ATS_scaled'] = scaled_vals[:, 2]
+        result_df['score'] = result_df['CVR_scaled']*0.25 + result_df['EFF_scaled']*0.25 + result_df['ATS_scaled']*0.5
         # sort by score -> rank, cluster record          
         top_10 = result_df.sort_values('score', ascending=False).head(10).copy()
         top_10['Rank'] = range(1, len(top_10) + 1)
         top_10['GMM_CLUSTER'] = CLUSTER_ID
         
         # s3 upload
-        output_key = f"ive_ml/Pred_Top/Cluster_{CLUSTER_ID}_top10_highabs.csv"
+        output_key = f"ive_ml/Pred_Top/Cluster_{CLUSTER_ID}_top10_highats.csv"
         s3_hook.load_string(
             string_data=top_10.to_csv(index=False),
             key=output_key,
@@ -186,7 +186,7 @@ def PREDICT_TOP10_HIGHABS(CLUSTER_ID: int, BUCKET_NAME: str):
         print(f"Successfully processed Cluster {CLUSTER_ID}")
     else:
         print(f"Cluster {CLUSTER_ID} has no valid data after filtering.")
-# concat by list[highcvr, higheff, highabs]
+# concat by list[highcvr, higheff, highats]
 def CONCAT_TOP10(METRIC_SUFFIX: list, BUCKET_NAME: str, **context):
     # s3 connect
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
@@ -222,8 +222,8 @@ def CONCAT_TOP10(METRIC_SUFFIX: list, BUCKET_NAME: str, **context):
 def CONCAT_MASTER_TABLEAU_FILE(BUCKET_NAME: str, **kwargs):
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
     
-    metrics = ["highcvr", "higheff", "highabs"]
-    label_map = {"highcvr": "이익", "higheff": "비용", "highabs": "안정성"}
+    metrics = ["highcvr", "higheff", "highats"]
+    label_map = {"highcvr": "이익", "higheff": "비용", "highats": "안정성"}
     all_data = []
 
     for m in metrics:

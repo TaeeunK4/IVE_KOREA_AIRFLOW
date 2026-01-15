@@ -17,7 +17,8 @@ with DAG(
     dag_id='IVE_SPLIT_CLUSTER_PIPELINE',
     default_args=default_args,
     schedule_interval=None,
-    catchup=False
+    catchup=False,  
+    tags = ["S3", "SPLIT", "CLUSTER", "UPLOAD"]
 ) as dag:
     with TaskGroup("SPLIT_CLUSTERING_GROUP") as SPLIT_CLUSTERING_GROUP:
         split_cluster = PythonOperator(

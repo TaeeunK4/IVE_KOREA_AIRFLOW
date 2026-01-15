@@ -28,11 +28,11 @@ for g, d in itertools.product(GROUP_COLS, DV_COLS):
     })
 
 with DAG(
-    dag_id='IVE_MLFLOW_ANOVA_TEST_PIPELINE',
+    dag_id='IVE_HYPO_ANOVA_TEST_PIPELINE',
     default_args=default_args,
     schedule_interval=None,
     catchup=False,
-    tags=["ANOVA", "WELCHS", "KRUSKAL", "TEST"]
+    tags=["HYPO", "MLFLOW", "ANOVA", "WELCHS", "KRUSKAL"]
 ) as dag:
     with TaskGroup("IVE_MLFLOW_ANOVA_TEST_GROUP") as IVE_MLFLOW_ANOVA_TEST_GROUP:
         clear_experiment = PythonOperator(
@@ -74,7 +74,7 @@ with DAG(
     with TaskGroup("TRIGGER_TO_GMM_CATBOOST_GROUP") as TRIGGER_TO_GMM_CATBOOST_GROUP:
         trigger_classifier = TriggerDagRunOperator(
         task_id="Trigger_to_gmm_catboost",
-        trigger_dag_id="IVE_GMM_CATBOOST_PIPELINE",
+        trigger_dag_id="IVE_ML_GMM_CATBOOST_PIPELINE",
         wait_for_completion=False,
         poke_interval=60,
         reset_dag_run=True,

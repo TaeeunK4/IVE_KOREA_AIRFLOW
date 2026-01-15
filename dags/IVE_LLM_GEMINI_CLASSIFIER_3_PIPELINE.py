@@ -36,14 +36,14 @@ default_args = {
 }
 
 with DAG(
-    dag_id="IVE_GEMINI_LLM_CLASSIFIER_3_PIPELINE",
+    dag_id="IVE_LLM_GEMINI_CLASSIFIER_3_PIPELINE",
     default_args=default_args,
     schedule_interval=None,
     template_searchpath = [
         '/opt/airflow/dbt_project/snowflake_queries'
     ],  
     catchup=False,
-    tags=["gemini", "s3", "classify", "left"]
+    tags=["LLM", "GEMINI"]
 ) as dag:
     with TaskGroup("IVE_INDUSTRY_CLASSIFY_3_GROUP") as IVE_INDUSTRY_CLASSIFY_3_GROUP:
         temp_clear_task = PythonOperator(
@@ -159,7 +159,7 @@ with DAG(
     with TaskGroup("TRIGGER_TO_ANOVA_TEST_GROUP") as TRIGGER_TO_ANOVA_TEST_GROUP:
         trigger_classifier = TriggerDagRunOperator(
         task_id="Trigger_to_anova_test",
-        trigger_dag_id="IVE_MLFLOW_ANOVA_TEST_PIPELINE",
+        trigger_dag_id="IVE_HYPO_ANOVA_TEST_PIPELINE",
         wait_for_completion=False,
         poke_interval=60,
         reset_dag_run=True,

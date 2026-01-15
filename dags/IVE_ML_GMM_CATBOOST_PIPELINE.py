@@ -19,11 +19,11 @@ default_args = {
 }
 
 with DAG(
-    dag_id='IVE_GMM_CATBOOST_PIPELINE',
+    dag_id='IVE_ML_GMM_CATBOOST_PIPELINE',
     default_args=default_args,
     schedule_interval=None,
     catchup=False,
-    tags=["GMM", "CatBoost", "MLflow"]
+    tags=["ML", "GMM", "CATBOOST", "MLFLOW"]
 ) as dag:
     with TaskGroup("IVE_GMM_CLUSTERING_GROUP") as IVE_GMM_CLUSTERING_GROUP:
         GMM_LOAD = PythonOperator(
