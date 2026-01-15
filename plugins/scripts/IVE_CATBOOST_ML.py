@@ -18,7 +18,7 @@ def CAT_LOAD_DATA(BUCKET_NAME: str, S3_KEY: str, LOCAL_PATH: str):
     return LOCAL_PATH
 
 # min(rmse) + min(val & train gap) + early_stopping -> min rmse + protect over-fitting + L shape loss graph 
-def FIND_OP_HYPERPARAMETER(trial, X, y, cat_features): 
+def FIND_OP_HYPERPARAMETER(trial, X, y, cat_features, cluster_id, target_name): 
     if y.nunique() <= 1:
         return 0.0
     # only depth, learning_rate edit
@@ -33,8 +33,8 @@ def FIND_OP_HYPERPARAMETER(trial, X, y, cat_features):
         "eval_metric": "RMSE",
         "logging_level": "Silent",
     }
-
-    with mlflow.start_run(nested=True):
+    trial_run_name = f"Trial_{trial.number}_{target_name}_C{cluster_id}"
+    with mlflow.start_run(run_name=trial_run_name, nested=True):
         # train, valid data split
         X_train, X_valid, y_train, y_valid = train_test_split(
             X, y, test_size=0.2, random_state=42)
@@ -97,25 +97,27 @@ def CATBOOST_REGRESSOR_OP_MODEL(LOCAL_PATH: str, BUCKET_NAME: str,
         with mlflow.start_run(run_name=run_name, nested=True):
             # def FIND_OP_HYPERPARAMETER : 5 times trial
             study = optuna.create_study(direction="minimize")
-            study.optimize(lambda trial: FIND_OP_HYPERPARAMETER(trial, X, y, cat_features), n_trials=5)
+            study.optimize(lambda trial: FIND_OP_HYPERPARAMETER(trial, X, y, cat_features, CLUSTER, target), n_trials=5)
 
             # select best model
-            best_model = CatBoostRegressor(
-                iterations=1500, **study.best_params, 
-                cat_features=cat_features, task_type="GPU", devices="0"
-            )
-            X_t, X_v, y_t, y_v = train_test_split(X, y, test_size=0.2, random_state=42)
-            best_model.fit(X_t, y_t, eval_set=(X_v, y_v), early_stopping_rounds=100, logging_level='Silent')
+            best_run_name = f"BestModel_{target}_C{CLUSTER}"
+            with mlflow.start_run(run_name=best_run_name, nested=True):
+                best_model = CatBoostRegressor(
+                    iterations=1500, **study.best_params, 
+                    cat_features=cat_features, task_type="GPU", devices="0"
+                )
+                X_t, X_v, y_t, y_v = train_test_split(X, y, test_size=0.2, random_state=42)
+                best_model.fit(X_t, y_t, eval_set=(X_v, y_v), early_stopping_rounds=100, logging_level='Silent')
 
-            # learn rmse/ validation rmse mapping -> check loss graph, over-fitting
-            eval_results = best_model.get_evals_result()
-            for i, (t_loss, v_loss) in enumerate(zip(eval_results['learn']['RMSE'], eval_results['validation']['RMSE'])):
-                mlflow.log_metric(f"final_{target}_train_rmse", t_loss, step=i)
-                mlflow.log_metric(f"final_{target}_val_rmse", v_loss, step=i)
+                # learn rmse/ validation rmse mapping -> check loss graph, over-fitting
+                eval_results = best_model.get_evals_result()
+                for i, (t_loss, v_loss) in enumerate(zip(eval_results['learn']['RMSE'], eval_results['validation']['RMSE'])):
+                    mlflow.log_metric(f"final_{target}_train_rmse", t_loss, step=i)
+                    mlflow.log_metric(f"final_{target}_val_rmse", v_loss, step=i)
 
-            # mlflow best model record
-            cluster_models_pack[target] = best_model
-            mlflow.catboost.log_model(best_model, f"Model_{CLUSTER}_{target}")
+                # mlflow best model record
+                cluster_models_pack[target] = best_model
+                mlflow.catboost.log_model(best_model, f"Model_{CLUSTER}_{target}")
 
     if not cluster_models_pack:
         print(f"❌ No models trained for Cluster {CLUSTER}. Skipping S3 upload.")
@@ -138,7 +140,10 @@ def CATBOOST_REGRESSOR_OP_MODEL(LOCAL_PATH: str, BUCKET_NAME: str,
 
 # all cluster process def
 def CATBOOST_TOTAL_PROCESS(LOCAL_PATH, BUCKET_NAME, EXPERIMENT_NAME, **context):
-    clusters = [0, 1, 2, 3, 4, 5 ,6]
+    # OP_N = context['ti'].xcom_pull(key = 'op_n_components', task_ids = 'IVE_GMM_CLUSTERING_GROUP.Search_op_n')
+    # OP_N = int(OP_N)
+    # clusters = list(range(0, OP_N))
+    clusters = [7]
     for cluster_id in clusters:
         print(f">>> Starting Tuning for Cluster {cluster_id}")
         CATBOOST_REGRESSOR_OP_MODEL(

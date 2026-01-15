@@ -16,7 +16,7 @@ default_args = {
 }
 
 GROUP_COLS = ["INDUSTRY", "OS_TYPE", "REJOIN_TYPE", "START_QUARTER", "LIMIT_TYPE"]
-DV_COLS = ["CVR", "1000_W_EFFICIENCY", "ABS"]
+DV_COLS = ["CVR", "1000_W_EFFICIENCY", "ATS"]
 all_mapped_params = []
 for g, d in itertools.product(GROUP_COLS, DV_COLS):
     all_mapped_params.append({

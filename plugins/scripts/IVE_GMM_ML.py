@@ -52,7 +52,7 @@ def GMM_SEARCH_N(LOCAL_PATH: str,
 def GMM_CLUSTERING(BUCKET_NAME: str, LOCAL_PATH: str,
                    SCALER_TYPE: Type, EXPERIMENT_NAME: str, **context):
     # pull xcom's op_n
-    OP_N = context['ti'].xcom_pull(key = 'op_n_components', task_ids = 'GMM_CLUSTERING_FINAL_DATA.SEARCH_OP_N')
+    OP_N = context['ti'].xcom_pull(key = 'op_n_components', task_ids = 'IVE_GMM_CLUSTERING_GROUP.Search_op_n')
     OP_N = int(OP_N)
     df = pd.read_parquet(LOCAL_PATH)
 
