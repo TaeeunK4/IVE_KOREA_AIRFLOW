@@ -18,27 +18,29 @@ def CAT_LOAD_DATA(BUCKET_NAME: str, S3_KEY: str, LOCAL_PATH: str):
     return LOCAL_PATH
 
 # min(rmse) + min(val & train gap) + early_stopping -> min rmse + protect over-fitting + L shape loss graph 
-def FIND_OP_HYPERPARAMETER(trial, X, y, cat_features, cluster_id, target_name): 
-    if y.nunique() <= 1:
-        return 0.0
+def FIND_OP_HYPERPARAMETER(trial, X, y, cat_features, cluster_id, target_name, task_type): 
+    # train, valid data split
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X, y, test_size=0.2, random_state=42)
+    
+    if y_train.nunique() <= 1:
+        print(f"⚠️ {target_name} C{cluster_id}: 학습셋 타겟이 단일 값입니다. Trial 중단.")
+        return 100.0
+    
     # only depth, learning_rate edit
     params = {
         "iterations": 1500,
         "depth": trial.suggest_int("depth", 4, 8),
         "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.05, log=True),
-        "task_type": "GPU",
-        "gpu_ram_part": 0.7,
-        "devices": "0",
+        "task_type": task_type,
+        "gpu_ram_part": 0.7 if task_type == "GPU" else None,
+        "devices": "0" if task_type == "GPU" else None,
         "loss_function": "RMSE",
         "eval_metric": "RMSE",
         "logging_level": "Silent",
     }
     trial_run_name = f"Trial_{trial.number}_{target_name}_C{cluster_id}"
     with mlflow.start_run(run_name=trial_run_name, nested=True):
-        # train, valid data split
-        X_train, X_valid, y_train, y_valid = train_test_split(
-            X, y, test_size=0.2, random_state=42)
-        
         # early_stopping_rounds -> L shape loss graph
         model = CatBoostRegressor(**params)
         model.fit(
@@ -71,6 +73,10 @@ def CATBOOST_REGRESSOR_OP_MODEL(LOCAL_PATH: str, BUCKET_NAME: str,
     df = pd.read_parquet(LOCAL_PATH)
     target_cluster = int(CLUSTER)
     cluster_df = df[df['GMM_CLUSTER'] == target_cluster].copy()
+
+    ROW_COUNT = len(cluster_df)
+    DYNAMIC_TASK_TYPE = "GPU" if ROW_COUNT >= 64 else "CPU"
+    print(f">>> Cluster {CLUSTER} (Rows: {ROW_COUNT}) -> Mode: {DYNAMIC_TASK_TYPE}")
     
     # features
     cat_features = ['SHAPE', 'MDA', 'START_TIME']
@@ -97,16 +103,22 @@ def CATBOOST_REGRESSOR_OP_MODEL(LOCAL_PATH: str, BUCKET_NAME: str,
         with mlflow.start_run(run_name=run_name, nested=True):
             # def FIND_OP_HYPERPARAMETER : 5 times trial
             study = optuna.create_study(direction="minimize")
-            study.optimize(lambda trial: FIND_OP_HYPERPARAMETER(trial, X, y, cat_features, CLUSTER, target), n_trials=5)
+            study.optimize(lambda trial: FIND_OP_HYPERPARAMETER(trial, X, y, cat_features, CLUSTER, target, DYNAMIC_TASK_TYPE), n_trials=5)
 
             # select best model
             best_run_name = f"BestModel_{target}_C{CLUSTER}"
             with mlflow.start_run(run_name=best_run_name, nested=True):
                 best_model = CatBoostRegressor(
                     iterations=1500, **study.best_params, 
-                    cat_features=cat_features, task_type="GPU", devices="0"
+                    cat_features=cat_features, task_type=DYNAMIC_TASK_TYPE, devices="0" if DYNAMIC_TASK_TYPE == "GPU" else None
                 )
                 X_t, X_v, y_t, y_v = train_test_split(X, y, test_size=0.2, random_state=42)
+
+                if y_t.nunique() <= 1:
+                    print(f"⚠️ {target} C{CLUSTER}: 최종 학습셋 분할 후 단일 값 발견. 학습을 건너뛰고 상수로 저장합니다.")
+                    cluster_models_pack[target] = y_t.iloc[0]
+                    continue
+
                 best_model.fit(X_t, y_t, eval_set=(X_v, y_v), early_stopping_rounds=100, logging_level='Silent')
 
                 # learn rmse/ validation rmse mapping -> check loss graph, over-fitting
@@ -143,7 +155,7 @@ def CATBOOST_TOTAL_PROCESS(LOCAL_PATH, BUCKET_NAME, EXPERIMENT_NAME, **context):
     # OP_N = context['ti'].xcom_pull(key = 'op_n_components', task_ids = 'IVE_GMM_CLUSTERING_GROUP.Search_op_n')
     # OP_N = int(OP_N)
     # clusters = list(range(0, OP_N))
-    clusters = [7]
+    clusters = [5,6]
     for cluster_id in clusters:
         print(f">>> Starting Tuning for Cluster {cluster_id}")
         CATBOOST_REGRESSOR_OP_MODEL(

@@ -1,4 +1,4 @@
-import io
+import os
 import pingouin as pg
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -153,14 +153,19 @@ def LABELING_BY_JUDGEMENT(BUCKET_NAME: str, LOCAL_PATH: str,
     # origin data load and merge
     df = pd.read_parquet(LOCAL_PATH)
     final_labeled_df = pd.merge(df, master_map, on=kept_vars, how='left')
-    # s3 upload parquet    
-    pq_buffer = io.BytesIO()
-    final_labeled_df.to_parquet(pq_buffer, index=False, engine='pyarrow', compression='snappy')
+    del df
 
+    TMP_OUTPUT = "/tmp/final_labeled_data.parquet"
+    final_labeled_df.to_parquet(TMP_OUTPUT, index=False, engine='pyarrow', compression='snappy')
+    del final_labeled_df
+
+    # s3 upload parquet    
     s3_hook = S3Hook(aws_conn_id='AWS_CON')
-    s3_hook.load_bytes(
-        bytes_data=pq_buffer.getvalue(),
+    s3_hook.load_file(
+        filename=TMP_OUTPUT,
         key="ive_analytic/IVE_ANALYTICS_LABEL_DATA.parquet",
         bucket_name=BUCKET_NAME,
         replace=True
     )
+    if os.path.exists(TMP_OUTPUT):
+        os.remove(TMP_OUTPUT)

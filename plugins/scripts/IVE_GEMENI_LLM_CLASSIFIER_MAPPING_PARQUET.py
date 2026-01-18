@@ -1,5 +1,6 @@
+import os
 import io
-import pandas as pd
+import pyarrow.parquet as pq
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 # snowflake -> s3 problem : all column's name edit by col_0, col_1
@@ -17,17 +18,21 @@ def MAPPING_S3_PARQUET(BUCKET_NAME, S3_KEY, LOCAL_PATH, **kwargs):
         "ADV_COST", "REWARD_COST", "MDA_COST", "CVR", "ATS", "1000_W_EFFICIENCY", "CONTRACT_PRICE", "SCH_KEY", "LIMIT_TYPE"
     ]
     # data load
-    df = pd.read_parquet(LOCAL_PATH)
-    # mapping
-    df.columns = actual_columns
-    
-    # s3 re-upload
-    pq_buffer = io.BytesIO()
-    df.to_parquet(pq_buffer, index=False, engine='pyarrow', compression='snappy')
+    table = pq.read_table(LOCAL_PATH)
 
-    s3_hook.load_bytes(
-        bytes_data=pq_buffer.getvalue(),
-        key="ive_analytic/IVE_ANALYTICS_FINAL.parquet",
-        bucket_name=BUCKET_NAME,
+    # mapping
+    new_table = table.rename_columns(actual_columns)
+    
+    # local save -> s3 upload
+    OUTPUT_PATH = LOCAL_PATH + "_processed"
+    pq.write_table(new_table, OUTPUT_PATH, compression='snappy')
+
+    s3_hook.load_file(
+        filename = OUTPUT_PATH,
+        key = "ive_analytic/IVE_ANALYTICS_FINAL.parquet",
+        bucket_name = BUCKET_NAME,
         replace=True
     )
+
+    if os.path.exists(LOCAL_PATH): os.remove(LOCAL_PATH)
+    if os.path.exists(OUTPUT_PATH): os.remove(OUTPUT_PATH)
