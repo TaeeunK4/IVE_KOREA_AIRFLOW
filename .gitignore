@@ -1,8 +1,8 @@
 # --- Data Files (가장 중요: 대용량 파일 방지) ---
-data/*.csv
-data/*.xlsx
-data/*.json
-data/*.parquet
+**/*.csv
+**/*.xlsx
+**/*.json
+**/*.parquet
 *.sql.gz
 
 # --- Python ---
