@@ -1,0 +1,15 @@
+apache-airflow-providers-amazon
+pandas
+openpyxl
+boto3
+pyarrow
+google
+google.genai
+astronomer-cosmos[dbt-snowflake]==1.7.1
+pingouin
+mlflow==2.10.2
+scikit-learn
+matplotlib
+seaborn
+catboost
+optuna
